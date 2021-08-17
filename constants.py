@@ -59,6 +59,7 @@ apply_num = 1  # num of offloading apply input of MECS network, prefixed
 # User Equipments
 # Five zones: SBS1, SBS2, SBS3, SBS4 and out of all BS serve
 ##############################
+numbers = [20, 10, 50, 5, 30]
 number = 20
 ##############################
 
@@ -83,7 +84,8 @@ P_send = np.array([5, 15]) # Watt Unified distributed
 # CPU_cycle Unified distributed
 data_size = np.array([0.2, 10])*MB  # kB Unified distributed
 computation_consumption = np.array([0.5, 5])*GHZ
-##############################
+##############################\
+X0s = [0.005, 0.01, 0.001, 0.003, 0.007]
 X0 = 0.01  # can be understood as every task coming per sec
 ##############################
 change_Prtask = {"ins": 2, "outs": 1.5, "up": 0.1*X0*slot, "down": 10*X0*slot,
@@ -133,7 +135,8 @@ lr_decay_round_length = time_total / lr_decay_round
 lr_decay_rate = pow(lr_total_decay, 1/lr_decay_round)  # per slot
 
 useMECS = 2/3
-
+hypepairs = [(numbers[i], X0s[0]) for i in range(len(numbers))] + \
+             [(numbers[0], X0s[i]) for i in range(len(X0s))]
 
 
 '''
