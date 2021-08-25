@@ -23,12 +23,12 @@ workbook = copy(rb)
 worksheet = workbook.get_sheet(0)
 logging.basicConfig(filename='testing.log', level=logging.ERROR,
                     format='%(message)s')
+observer = Observer()
+env = MECsystem(API_normalization=False, observer=observer)
 for j in range(len(cn.hypepairs)):
-    number, X0 = cn.hypepairs[j]    
-    observer = Observer()
-    env = MECsystem(API_normalization=False, observer=observer)
-    decider = Logical() ############################ 
-    # decider = Offloading()
+    number, X0 = cn.hypepairs[j]
+    # decider = Logical() ############################ 
+    decider = Offloading()
     # decider = Local()
     
     np.random.seed(0)
@@ -37,7 +37,7 @@ for j in range(len(cn.hypepairs)):
     score = 0
     reward_history = []
     print_period = 5000
-    obs = env.reset()
+    obs = env.reset(j, False, observer)
     print('started')
     k = 0
     while not done:
@@ -53,6 +53,7 @@ for j in range(len(cn.hypepairs)):
         reward_history.append(reward)
         if k % print_period == 0:
             print(k)
+            print(obs)
             print(act)
             print('slot now {}'.format(env.time/cn.slot))
             print('already done {} %'.format(env.time/cn.time_total*100))
@@ -71,10 +72,10 @@ for j in range(len(cn.hypepairs)):
     fail_rate = observer.fail_rate()
     local_count = observer.local_count
     offload_count = observer.offload_count
-    
+  
     
     # write to excel
-    row = j + 2
+    row = j + 59
     labels = [reward_mean, reward_var, delay_mean, delay_var, energy_mean,
               energy_var, fail_rate, offload_count, local_count]
     worksheet.write(row, 0, label = "{}, {}".format(number, X0))

@@ -41,7 +41,7 @@ class Logical():
             # sending is occupied, run locally, whether local occupied or not
             return self.local
         elif self.UE_info[4] == True:
-            # should ren offloadingly
+            # should run offloadingly
             if self.choose_tunnel():
                 # a tunnel avaliable can be found
                 act = self.get_offload_result(withcost=False)
@@ -51,7 +51,7 @@ class Logical():
         if not self.choose_tunnel():
             return self.local
         # compare local and offload
-        lt = self.task_info[0] / self.UE_info[0]
+        lt = self.task_info[1] / self.UE_info[0]
         le = lt * self.UE_info[0] * self.UE_info[1]
         ot, oe, act = self.get_offload_result(withcost=True)
         accordance = cn.coefficient_time * (ot - lt) + cn.coefficient_energy *\
@@ -67,6 +67,7 @@ class Logical():
         if not all(BSchannel[int(self.zone)]):
             self.BS = self.zone
         elif not all(BSchannel[0]):
+            # use macro BS
             self.BS = 0
         else:
             # no communication tunnel
@@ -83,7 +84,8 @@ class Logical():
         act = np.array([1, self.BS, self.channel, freq])
         if withcost:
             x = self.UE_info[2] * cn.channel_gain[int(self.channel)] / cn.noise
-            t1 = cn.width * log((1 + x), 2)
+            rn = cn.width * log((1 + x), 2)
+            t1 = self.task_info[0] / rn
             t2 = self.task_info[0] * cn.BS2MECS_rate[int(self.BS)]
             t3 = self.task_info[1] / freq
             t = t1 + t2 + t3

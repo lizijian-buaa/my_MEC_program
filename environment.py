@@ -18,31 +18,33 @@ import myrandom as ran
 
 class MECsystem(object):
     def __init__(self, API_normalization=True, observer=None):
-        self.UEs = self.UserEquipments(cn.number)
+        # if API normalization is true, all inputs and outputs are resized to
+        # [0,1], needed when using Neural Networks
+        self.UEs = self.UserEquipments(cn.number, cn.X0)
         self.BSs = BSs(cn.BS2MECS_rate, cn.channel_gain, cn.width, cn.noise)
-        self.done = False
-        self.time = 0
-        self.time_frozen = 0  # the attr to record time of the last decision
         observer.sync(self)
         self.reward = Reward(cn.coefficient_energy, cn.coefficient_time, \
                              cn.fail_punish, self, observer)
         self.MECS = server(need_preprocess=API_normalization)
         self.slot = cn.slot
-        self.clock = np.zeros(2)
-        # clock of move period and Prtask change period
         self.move_period = cn.move_period
         self.change_Prtask_period = cn.change_Prtask_period
         self.initialize()
 
         
     class UserEquipments(list):
-        def __init__(self, num):
+        def __init__(self, num, X0):
             # prtask roughly be around ( 0.001, 0.1)
             self.PrUE = cn.PrUE
             self.change_Prtask = cn.change_Prtask
-            self.taskgroup = np.array([self.change_Prtask["x0"]] *\
-                                      cn.task_group_num)*cn.slot
+            self.X0 = X0 * self.change_Prtask["x0"]
+            self.taskgroup = np.array([X0] * cn.task_group_num)
             self.num = num
+            self.up = self.change_Prtask["up"] * self.X0
+            self.down = self.change_Prtask["down"] * self.X0
+            self.ins = self.change_Prtask["ins"]  # change towards mean value
+            self.outs = self.change_Prtask["outs"]  # change away from mean value
+            self.changeProbProb = cn.changeProbProb
             
         def showzone(self):
             # returns the location distribution over 4 zones
@@ -57,24 +59,25 @@ class MECsystem(object):
                 UE.move(self.PrUE)
                 
         def change_task_prob(self):
-            up = self.change_Prtask["up"]
-            down = self.change_Prtask["down"]
-            ins = self.change_Prtask["ins"]  # change towards mean value
-            outs = self.change_Prtask["outs"]  # change away from mean value
-            x0 = self.change_Prtask["x0"]
             for i in range(self.taskgroup.shape[0]):
-                if ran.result(0.2):
+                if ran.result(self.changeProbProb):
                     # increase prob.
-                    pa = ins if self.taskgroup[i] < x0 else outs
-                    self.taskgroup[i] = min(self.taskgroup[i]*pa, up)
-                elif ran.result(0.2/(1-0.2)):
+                    pa = self.ins if self.taskgroup[i] < self.X0 else self.outs
+                    self.taskgroup[i] = min(self.taskgroup[i]*pa, self.up)
+                elif ran.result(self.changeProbProb/(1-self.changeProbProb)):
                     # decrease prob.
-                    pa = ins if self.taskgroup[i] > x0 else outs
-                    self.taskgroup[i] = max(self.taskgroup[i]/pa, down)
+                    pa = self.ins if self.taskgroup[i] > self.X0 else self.outs
+                    self.taskgroup[i] = max(self.taskgroup[i]/pa, self.down)
                     
     def initialize(self):
+        self.done = False
+        self.time = 0
+        self.time_frozen = 0  # the attr to record time of the last decision
+        self.clock = np.zeros(2)
+        # clock of move period and Prtask change period
         for i in range(self.UEs.num):
-            self.UEs.append(random_create_UE(self.UEs.taskgroup))  # initialized UEs
+            self.UEs.append(random_create_UE(self.UEs.taskgroup))
+            # initialized UEs
         while not self.MECS.apply:
             self.time += self.slot
             self.slot_step()
@@ -104,13 +107,24 @@ class MECsystem(object):
         for UE in self.UEs:
             UE.every_slot(self.time, self.slot, self.BSs, self.reward,
                           self.MECS)
-    
-    def reset(self):
-        # probably need not use this method 
-        self.initialize()
-        return self.MECS.get_state(self.BSs)
-
-
+     
+    def reset(self, i=None, API_normalization=True, observer=None):
+        # used as you want to test multiple conditions with a single run
+        if i == None:
+            self.initialize()
+            return self.MECS.get_state(self.BSs)
+        else:
+            number, X0 = cn.hypepairs[i]
+            self.UEs = self.UserEquipments(number, X0)
+            self.BSs = BSs(cn.BS2MECS_rate, cn.channel_gain, cn.width, cn.noise)
+            observer.reset()
+            self.reward = Reward(cn.coefficient_energy, cn.coefficient_time, \
+                                 cn.fail_punish, self, observer)
+            self.MECS = server(need_preprocess=API_normalization)
+            self.initialize()
+            return self.MECS.get_state(self.BSs)
+            
+            
 class Reward(object):
     def __init__(self, coefficient_energy, coefficient_time, fail_punish,
                  env, observer=None):
@@ -180,3 +194,13 @@ class Observer(object):
         
     def fail_rate(self):
         return self.count / self.task_num
+    
+    def reset(self):
+        self.delay = []
+        self.energy = []
+        self.count = 0
+        self.task_num = 0
+        self.offload_count = 0
+        self.local_count = 0
+        self.reward_history = []
+        self.k = []

@@ -47,8 +47,8 @@ class server(object):
         task.set_work_mode('offload' if reply[0] else 'local')
         task.start_work(now, reward, BSs=BSs, BS=reply[1],
                         channel=reply[2], MECS=self, MECS_f=reply[-1])
-        
-        
+    
+    
     def get_state(self, BSs, need_preprocess=True):
         # convert the apply into acceptable form:
         x = self.task2np(self.apply)

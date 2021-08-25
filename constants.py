@@ -36,17 +36,17 @@ GHZ = MHZ*1e3
 
 
 # Time scales
-slot = 2e-1  # seconds of time length per slot
-time_total = 3600 * 2.4  # seconds   total simulation time
+slot = 1e-1  # seconds of time length per slot
+time_total = 3600 * 48  # seconds   total simulation time
 
 
 # BaseStation
-BS2MECS_rate = np.array([0, 0.0002, 0.0004, 0.0006])/KB  # sec/KB
+BS2MECS_rate = np.array([0, 0.05, 0.07, 0.09])/MB  # sec/MB
 # 0, 0.0002, 0.0004
 # Channels
 channel_gain = np.array([-5, -10, -15])  # dB -5, -10, -15
 channel_gain = np.power(10, channel_gain/20)  # multiple
-width = 2*MHZ  # MHz
+width = 5*MHZ  # MHz
 noise = 4e-8  # W
 
 
@@ -60,7 +60,7 @@ apply_num = 1  # num of offloading apply input of MECS network, prefixed
 # Five zones: SBS1, SBS2, SBS3, SBS4 and out of all BS serve
 ##############################
 numbers = [20, 10, 50, 5, 30]
-number = 20
+number = 20  # default
 ##############################
 
 PrUE = np.array([[None, 0.001, 0.001, 0.001],
@@ -73,8 +73,9 @@ PrUE[PrUE == 0] = 1 - np.sum(PrUE, axis=1)
 # Transfer Probability Matrix of UE per seconds
 move_period = 1  # second(s), prefixed
 change_Prtask_period = 60
+changeProbProb = 0.2  # every minute
 # move_period for User movement between BSs' svrvice areas and Prtask change
-UE_frequency = np.array([0.5, 4])*GHZ  # GHz Unified distributed
+UE_frequency = np.array([0.5, 2])*GHZ  # GHz Unified distributed
 power_density = np.array([1, 4])/GHZ**2  # (W/GHz^2) Unified distributed
 # Joule -- mAh*Volt*3.6 Unified distributed
 P_send = np.array([5, 15]) # Watt Unified distributed
@@ -85,11 +86,11 @@ P_send = np.array([5, 15]) # Watt Unified distributed
 data_size = np.array([0.2, 10])*MB  # kB Unified distributed
 computation_consumption = np.array([0.5, 5])*GHZ
 ##############################\
-X0s = [0.005, 0.01, 0.001, 0.003, 0.007]
-X0 = 0.01  # can be understood as every task coming per sec
+X0s = [0.01, 0.001, 0.005, 0.02, 0.1]
+X0 = 0.01  # default (can be understood as every task coming per sec)
 ##############################
-change_Prtask = {"ins": 2, "outs": 1.5, "up": 0.1*X0*slot, "down": 10*X0*slot,
-                 "x0": X0*slot}  # min 10^-3, max 10^-1
+change_Prtask = {"ins": 2, "outs": 1.5, "up": 0.1*slot, "down": 10*slot,
+                 "x0": slot}  # up, down, x0 need to be multiplied by X0
 # parameters for change rules
 task_group_num = 3
 # training
@@ -134,7 +135,7 @@ lr_decay_round = 10
 lr_decay_round_length = time_total / lr_decay_round
 lr_decay_rate = pow(lr_total_decay, 1/lr_decay_round)  # per slot
 
-useMECS = 2/3
+useMECS = 1
 hypepairs = [(numbers[i], X0s[0]) for i in range(len(numbers))] + \
              [(numbers[0], X0s[i]) for i in range(len(X0s))]
 
