@@ -11,13 +11,19 @@ from math import log
 
 
 class Logical():
-    def __init__(self):
-        self.useMECS = cn.useMECS
+    def __init__(self, useMECS=cn.useMECS):
+        self.useMECS = useMECS
         self.channel_num = cn.channel_gain.size
         self.BS_num = cn.BS2MECS_rate.size
         self.BS = None
         self.channel = None
         self.local = np.array([0, 0, 0, 0])
+        
+    def set_useMECS(self, useMECS):
+        self.useMECS = useMECS
+        
+    def reset_useMECS(self):
+        self.useMECS = cn.useMECS
         
     def choose_action(self, observation):
         # observation looks like:
@@ -105,13 +111,19 @@ def preprocess(action):
         
 class Offloading(object):
     # use SBS prior to MBS defaultly
-    def __init__(self):
-        self.useMECS = cn.useMECS
+    def __init__(self, useMECS=cn.useMECS):
+        self.useMECS = useMECS
         self.channel_num = cn.channel_gain.size
         self.BS_num = cn.BS2MECS_rate.size
         self.BS = None
         self.channel = None
         self.local = np.array([0, 0, 0, 0])
+        
+    def set_useMECS(self, useMECS):
+        self.useMECS = useMECS
+        
+    def reset_useMECS(self):
+        self.useMECS = cn.useMECS
     
     def choose_action(self, observation):
         # observation looks like:
@@ -156,3 +168,7 @@ class Local():
         
     def choose_action(self, observation):     
         return np.array([0, 0, 0, 0])
+    
+    def set_useMECS(self, useMECS):
+        #  do nothing
+        pass

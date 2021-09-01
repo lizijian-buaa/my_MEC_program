@@ -13,14 +13,12 @@ remotely largest delay:
     channel_gain[0] / noise), 2))+data_size[-1]*BS2MECS_rate[-1] \
     + computation_consumption[1]/frequency
 remotely largest energy consumption:
-
-
 """
-# =============================================================================
-# reply stuck at [1 0 1 2e10]
-# =============================================================================
+
+
 import math
 import numpy as np
+
 
 # Data size scales
 BYTE = 8
@@ -41,7 +39,7 @@ time_total = 3600 * 48  # seconds   total simulation time
 
 
 # BaseStation
-BS2MECS_rate = np.array([0, 0.05, 0.07, 0.09])/MB  # sec/MB
+BS2MECS_rate = np.array([0, 0.05, 0.1, 0.15])/MB  # sec/MB
 # 0, 0.0002, 0.0004
 # Channels
 channel_gain = np.array([-5, -10, -15])  # dB -5, -10, -15
@@ -59,7 +57,7 @@ apply_num = 1  # num of offloading apply input of MECS network, prefixed
 # User Equipments
 # Five zones: SBS1, SBS2, SBS3, SBS4 and out of all BS serve
 ##############################
-numbers = [20, 10, 50, 5, 30]
+numbers = [20, 1, 5, 50, 100]
 number = 20  # default
 ##############################
 
@@ -135,7 +133,8 @@ lr_decay_round = 10
 lr_decay_round_length = time_total / lr_decay_round
 lr_decay_rate = pow(lr_total_decay, 1/lr_decay_round)  # per slot
 
-useMECS = 1
+useMECS = 2/3
+useMECSs = [1/4, 1/2, 3/4, 1]
 hypepairs = [(numbers[i], X0s[0]) for i in range(len(numbers))] + \
              [(numbers[0], X0s[i]) for i in range(len(X0s))]
 

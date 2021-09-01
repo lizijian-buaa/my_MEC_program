@@ -10,75 +10,83 @@ import numpy as np
 import constants as cn
 from environment import MECsystem, Observer
 from new_decision import Logical, Offloading, Local
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import logging
-import os
-import plotly_express as px
-import xlwt
-import xlrd
-from xlutils.copy import copy
+# import os
+# import plotly_express as px
+from write_excel import Write_result
 
-rb = xlrd.open_workbook('result_data.xlsx')
-workbook = copy(rb)
-worksheet = workbook.get_sheet(0)
+        
+np.random.seed(0)
 logging.basicConfig(filename='testing.log', level=logging.ERROR,
                     format='%(message)s')
 observer = Observer()
 env = MECsystem(API_normalization=False, observer=observer)
-for j in range(len(cn.hypepairs)):
-    number, X0 = cn.hypepairs[j]
-    # decider = Logical() ############################ 
-    decider = Offloading()
-    # decider = Local()
-    
-    np.random.seed(0)
-    
-    done = False
-    score = 0
-    reward_history = []
-    print_period = 5000
-    obs = env.reset(j, False, observer)
-    print('started')
-    k = 0
-    while not done:
-        # need some way to 
-        k += 1
-        act = decider.choose_action(obs)
-        new_state, reward, done, info = env.step(act)
-        # print('reward {}'.format(reward))
-        score += reward
-        obs = new_state
-        # print('slot now {}'.format(env.time/slot))
-        # logging.info('reward is： {}'.format(reward))
-        reward_history.append(reward)
-        if k % print_period == 0:
-            print(k)
-            print(obs)
-            print(act)
-            print('slot now {}'.format(env.time/cn.slot))
-            print('already done {} %'.format(env.time/cn.time_total*100))
-    # =============================================================================
-    #         define a visualization func and call it here
-    # =============================================================================
-        score = 0
-    
-    # record the ave task_prob, (task_group_num, and zone_num)
-    reward_mean = np.mean(reward_history)
-    reward_var = np.std(reward_history)
-    delay_mean = np.mean(observer.delay)
-    delay_var = np.std(observer.delay)
-    energy_mean = np.mean(observer.energy)
-    energy_var = np.std(observer.energy)
-    fail_rate = observer.fail_rate()
-    local_count = observer.local_count
-    offload_count = observer.offload_count
-  
-    
-    # write to excel
-    row = j + 59
-    labels = [reward_mean, reward_var, delay_mean, delay_var, energy_mean,
-              energy_var, fail_rate, offload_count, local_count]
-    worksheet.write(row, 0, label = "{}, {}".format(number, X0))
-    for i in range(len(labels)):
-        worksheet.write(row, 1+i, label = labels[i])
-workbook.save('result_data.xlsx')
+excel_writer = Write_result('result_data.xlsx')
+deciders = {"OFFLOADING": Offloading(), "GREEDY": Logical(), "LOCAL": Local()}
+
+number, X0 = cn.number, cn.X0 
+for useMECS in cn.useMECSs:
+    for key in list(deciders.keys())[:-1]:
+        deciders[key].set_useMECS(useMECS)
+        decider = deciders[key]
+        excel_writer.write_head(method=key)    
+
+        done = False
+        print_period = 5000
+        obs = env.reset(None, False, observer)
+        print('started')
+        k = 0
+        while not done:
+            k += 1
+            act = decider.choose_action(obs)
+            new_state, reward, done, info = env.step(act)
+            # print('reward {}'.format(reward))
+            # print('slot now {}'.format(env.time/slot))
+            # logging.info('reward is： {}'.format(reward))
+            if k % print_period == 0:
+                print(k)
+                print(obs)
+                print(act)
+                print('slot now {}'.format(env.time/cn.slot))
+                print('already done {} %'.format(env.time/cn.time_total*100))
+            obs = new_state
+                
+        row_data = ["{}, {}".format(number, X0)] + observer.output_to_excel()
+        excel_writer.write_data(row_data)
+
+
+for key in deciders.keys():
+    decider = deciders[key]
+    decider.set_useMECS(cn.useMECS)
+    excel_writer.write_head(method=key)
+    for j in range(len(cn.hypepairs)):
+        number, X0 = cn.hypepairs[j]
+        
+        done = False
+        print_period = 5000
+        obs = env.reset(j, False, observer)
+        print('started')
+        k = 0
+        while not done:
+            k += 1
+            act = decider.choose_action(obs)
+            new_state, reward, done, info = env.step(act)
+            # print('reward {}'.format(reward))
+            # print('slot now {}'.format(env.time/slot))
+            # logging.info('reward is： {}'.format(reward))
+            if k % print_period == 0:
+                print(k)
+                print(obs)
+                print(act)
+                print('slot now {}'.format(env.time/cn.slot))
+                print('already done {} %'.format(env.time/cn.time_total*100))
+        # =============================================================================
+        #         define a visualization func and call it here
+        # =============================================================================
+            obs = new_state
+            
+        # write to excel
+        row_data = ["{}, {}".format(number, X0)] + observer.output_to_excel()
+        excel_writer.write_data(row_data)
+excel_writer.save()

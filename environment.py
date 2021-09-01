@@ -91,8 +91,8 @@ class MECsystem(object):
             self.slot_step()
         if self.time > cn.time_total:
             self.done = True
-        return self.MECS.get_state(self.BSs), self.reward.reward, self.done, \
-               self.time - self.time_frozen
+        return self.MECS.get_state(self.BSs), self.reward.get_reward(), \
+               self.done, self.time - self.time_frozen
     
     def slot_step(self):
         shuffle(self.UEs)
@@ -110,19 +110,17 @@ class MECsystem(object):
      
     def reset(self, i=None, API_normalization=True, observer=None):
         # used as you want to test multiple conditions with a single run
-        if i == None:
-            self.initialize()
-            return self.MECS.get_state(self.BSs)
-        else:
+        if i != None:
             number, X0 = cn.hypepairs[i]
             self.UEs = self.UserEquipments(number, X0)
-            self.BSs = BSs(cn.BS2MECS_rate, cn.channel_gain, cn.width, cn.noise)
+        self.BSs = BSs(cn.BS2MECS_rate, cn.channel_gain, cn.width, cn.noise)
+        if observer != None:
             observer.reset()
-            self.reward = Reward(cn.coefficient_energy, cn.coefficient_time, \
-                                 cn.fail_punish, self, observer)
-            self.MECS = server(need_preprocess=API_normalization)
-            self.initialize()
-            return self.MECS.get_state(self.BSs)
+        self.reward = Reward(cn.coefficient_energy, cn.coefficient_time, \
+                             cn.fail_punish, self, observer)
+        self.MECS = server(need_preprocess=API_normalization)
+        self.initialize()
+        return self.MECS.get_state(self.BSs)
             
             
 class Reward(object):
@@ -156,6 +154,7 @@ class Reward(object):
         del task
             
     def get_reward(self):
+        self.observer.record_reward(self.reward)
         return self.reward
     
     def reset(self):
@@ -195,6 +194,9 @@ class Observer(object):
     def fail_rate(self):
         return self.count / self.task_num
     
+    def record_reward(self, reward):
+        self.reward_history.append(reward)
+    
     def reset(self):
         self.delay = []
         self.energy = []
@@ -204,3 +206,21 @@ class Observer(object):
         self.local_count = 0
         self.reward_history = []
         self.k = []
+        
+    def output_to_excel(self):
+        # return list of data to be fulfilled in one row
+        reward_mean = np.mean(self.reward_history)
+        reward_var = np.std(self.reward_history)
+        delay_mean = np.mean(self.delay)
+        delay_var = np.std(self.delay)
+        energy_mean = np.mean(self.energy)
+        energy_var = np.std(self.energy)
+        fail_rate = self.fail_rate()
+        local_count = self.local_count
+        offload_count = self.offload_count
+        offloading_rate = self.offload_count / (self.local_count +
+                                                self.offload_count)
+        labels = [reward_mean, reward_var, delay_mean, delay_var, energy_mean,
+          energy_var, fail_rate, offload_count, local_count, offloading_rate]
+        return labels
+    
