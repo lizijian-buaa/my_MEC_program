@@ -14,7 +14,7 @@ def ran01():
     return np.random.uniform(0, 1)
 
 def result(prob):
-    if 0 < prob < 1:
+    if 0 <= prob <= 1:
         return ran01() < prob
     else:
-        return None
+        raise Exception("probability out of range(0 to 1)")

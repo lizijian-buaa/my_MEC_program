@@ -10,41 +10,53 @@ import numpy as np
 from constants import *
 from environment import MECsystem
 from decision import Agent
-from utils import plot_learning
+# from utils import plot_learning
+import matplotlib.pyplot as plt
+import logging
+import os
 
-UEnet = Agent(alpha=0.000025, beta=0.00025, input_dims = 8, tau=0.001, \
-              env=None, batch_size=64, layer1_size=500, layer2_size=300,
-              n_actions=1)
+
+logging.basicConfig(filename='training.log', level=logging.CRITICAL,
+                    format='%(levelname)s:%(message)s')
 env = MECsystem(apply_num, UEnet)
-MECSnet = Agent(alpha=0.000025, beta=0.00025, input_dims = \
-              8*apply_num+BS2MECS_rate.size*channel_gain.size+1,
-              tau=0.001, env=env, batch_size=64, layer1_size=500,
-              layer2_size=300, n_actions=apply_num*4)
+MECSnet = Agent(alpha=alpha, beta=beta, input_dims=input_dims, tau=0.001,
+                env=env, batch_size=batch_size, layer1_size=layer1_size,
+                layer2_size=layer2_size, n_actions=n_actions, gamma=gamma)
 
 np.random.seed(0)
 
+done = False
+score = 0
 score_history = []
-for i in range(10):
-    done = False
-    score = 0
-    obs = env.reset()
-    print('started')
-    while not done:
-        act = MECSnet.choose_action(obs)
-        new_state, reward, done, info = env.step(act)
-        MECSnet.remember(obs, act, reward, new_state, int(done))
-        MECSnet.learn()
-        score += reward
-        obs = new_state
-        print('reward is： {}'.format(reward))
-        
-    score_history.append(score)
-    print('episode ', i, 'score %.2f' % score,
-          '100 game average %.2f' % np.mean(score_history[-100:]))
-    if i % 25 == 0:
-        UEnet.save_models()
-    filename = 'MEC_offloading.png'
-    plot_learning(score_history, filename, window=100)
-        
-    
-    
+obs = env.reset()
+print('started')
+k = 0
+while not done:
+    k += 1
+    act = MECSnet.choose_action(obs)
+    new_state, reward, done, info = env.step(act)
+    MECSnet.remember(obs, act, reward, new_state, int(done), info)
+    MECSnet.learn()
+    score += reward
+    obs = new_state
+    # logging.info('reward is： {}'.format(reward))
+    if k % 500 == 0:
+        print(k)
+        print(act)
+        print('already done {} %'.format(env.time/time_total*100))
+        score_history.append(score/100)
+        score = 0
+
+if not os.path.exists("tmp"):
+    os.mkdir("tmp")
+if not os.path.exists("tmp//ddpg"):
+    os.mkdir("tmp//ddpg")
+MECSnet.save_models()
+np.savetxt("score.dat",score_history)
+filename = 'training_reward.png'
+plt.figure(1)
+plt.plot(score_history)
+plt.xlabel('epoch/100')
+plt.ylabel('reward')
+plt.savefig(filename)
+                

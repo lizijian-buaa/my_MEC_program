@@ -5,10 +5,9 @@ Created on Fri Mar 13 22:11:19 2020
 @author: lizijian
 """
 import math
-from Node import Node
 import numpy as np
 
-class BSs(Node):
+class BSs():
     '''
     time1: UE to BS
     time2: BS to MECS

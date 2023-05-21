@@ -6,6 +6,7 @@ Created on Fri Mar 13 12:50:08 2020
 """
 
 import numpy as np
+import uuid
 
 class Task():
     def __init__(self, data_size, computation_consumption, delay_tolerant,
@@ -22,6 +23,8 @@ class Task():
         self.energy = None
         self.BS_index = None
         self.gain_index = None
+        self.uuid = uuid.uuid4()
+        # self.trace = []
     
     def get_data_size(self):
         return self.data_size
@@ -58,6 +61,7 @@ class Task():
         self.energy = BSs.energy(self.UE, self, BS, channel)
         self.UE.sending = self
         self.UE.is_sending_occupied = True
+        # self.trace.append("buffer: start,{}".format(now-self.arrival_time))
         del self.UE.buffer[0] # delete task from waiting list
         
     def set_local(self, now):
@@ -70,6 +74,7 @@ class Task():
         self.energy = self.UE.P * t
         self.UE.local = self
         self.UE.is_local_occupied = True
+        # self.trace.append("buffer: start,{}".format(now-self.arrival_time))
         del self.UE.buffer[0] # delete task from waiting list
         
     def start_work(self, now, reward, **kw):
@@ -78,13 +83,22 @@ class Task():
         elif self.work_mode is 'offload':
             self.set_offloading(kw['BSs'], kw['BS'], kw['channel'], kw['MECS'],
                                 kw['MECS_f'], now)
-        if self.finish_time > self.fail_time:
+        if self.finish_time is None:
+            return
+        elif self.finish_time > self.fail_time:
             reward.task_failed()
-            del self
+            if self.work_mode is 'local':
+                self.UE.local = None
+                self.UE.is_local_occupied = False
+            elif self.work_mode is 'offload':  
+                self.UE.sending = None
+                self.UE.is_sending_occupied = False
+                kw['BSs'].set_free(self)
+                kw['MECS'].f_free += self.MECS_f
             
     def finish(self, BSs, MECS, reward):
         BSs.set_free(self)
         MECS.f_free += self.MECS_f
         reward.task_finish(self)
-        del self
+        # self.trace.append("self: finish")
       
